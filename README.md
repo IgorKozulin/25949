@@ -1,4 +1,4 @@
-# 25945
+# 25949
 
 Подключение к Solaris
 
@@ -16,7 +16,7 @@ cat .ssh/id_rsa.pub
 
 # Первый этап
 
-1. Перейти по ссылке https://github.com/IgorKozulin/25945.git
+1. Перейти по ссылке https://github.com/IgorKozulin/25949.git
 2. В правом верхнем углу нажать на Fork -> Create new fork...
 3. Теперь в профиле есть копия этого репозитория
 
@@ -61,7 +61,7 @@ cat .ssh/id_rsa.pub
 
 
 В папке с вашим репозиторием находится папка .git, в которой есть файл config в нем необходимо заменить строчку url
-на  git@github.com:ваше имя аккаунта/IgorKozulin/25945.git  
+на  git@github.com:ваше имя аккаунта/IgorKozulin/25949.git  
 
 
 Если при перезапуске терминала или Git Bash происходит ошибка permission denied повторите команду `ssh-add ~/.ssh/gitnsu` и затем напишите `git pull`
@@ -74,7 +74,7 @@ cat .ssh/id_rsa.pub
 2. git add <Путь к вашей папке> добавление в репозиторий
 3. git commit -m "<Что-то написать>" сделать коммит
 4. git push для загрузки на github
-# 25945
+# 25949
 
 
 #…or create a new repository on the command line
@@ -82,11 +82,11 @@ cat .ssh/id_rsa.pub
 2. git add README.md
 3. git commit -m "first commit"
 4. git branch -M main
-5. git remote add origin git@github.com:IgorKozulin/25945.git
+5. git remote add origin git@github.com:IgorKozulin/25949.git
 6. git push -u origin main
 
 #…or push an existing repository from the command line
-1. git remote add origin git@github.com:IgorKozulin/25945.git
+1. git remote add origin git@github.com:IgorKozulin/25949.git
 2. git branch -M main
 3. git push -u origin main
 
