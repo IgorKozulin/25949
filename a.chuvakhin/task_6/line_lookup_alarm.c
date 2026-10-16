@@ -3,10 +3,12 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <sys/stat.h>
 
 typedef struct {
-    long offset;  
-    int length;   
+    long offset;
+    int length;
+    int size;
 } LineInfo;
 
 static int global_fd = -1;   
@@ -26,7 +28,7 @@ static void alarm_handler(int sig)
     _exit(EXIT_SUCCESS);
 }
 
-static int add_line(LineInfo **table, int *count, int *capacity, long offset, int length)
+static int add_line(LineInfo **table, int *count, int *capacity, long offset, int length, int size)
 {
     if (*count == *capacity) {
         int new_cap = (*capacity == 0) ? 16 : *capacity * 2;
@@ -38,14 +40,16 @@ static int add_line(LineInfo **table, int *count, int *capacity, long offset, in
     }
     (*table)[*count].offset = offset;
     (*table)[*count].length = length;
+    (*table)[*count].size = size;
     (*count)++;
     return 0;
 }
 
 int main(int argc, char *argv[])
 {
-    int fd, num_lines = 0, capacity = 0, i, n, ok;
-    long line_start = 0, pos;
+    int fd, num_lines = 0, capacity = 0, i, n, ok, chars = 0;
+    long line_start = 0, pos, total = 0;
+    struct stat st;
     char c;
     LineInfo *table = NULL;
 
@@ -62,18 +66,21 @@ int main(int argc, char *argv[])
     global_fd = fd;
 
     while (read(fd, &c, 1) == 1) {
-        pos = lseek(fd, 0L, SEEK_CUR);      
+        pos = lseek(fd, 0L, SEEK_CUR);
+        if (c != '\n' && ((unsigned char)c & 0xC0) != 0x80)
+            chars++;
         if (c == '\n') {
-            if (add_line(&table, &num_lines, &capacity, line_start, (int)(pos - line_start)) != 0) {
+            if (add_line(&table, &num_lines, &capacity, line_start, chars, (int)(pos - line_start)) != 0) {
                 fprintf(stderr, "Error: out of memory\n");
                 return 1;
             }
-            line_start = pos;                   
+            line_start = pos;
+            chars = 0;
         }
     }
     pos = lseek(fd, 0L, SEEK_CUR);             
     if (pos > line_start) {                   
-        if (add_line(&table, &num_lines, &capacity, line_start, (int)(pos - line_start)) != 0) {
+        if (add_line(&table, &num_lines, &capacity, line_start, chars, (int)(pos - line_start)) != 0) {
             fprintf(stderr, "Error: out of memory\n");
             return 1;
         }
@@ -85,8 +92,15 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    for (i = 0; i < num_lines; i++)
-        printf("Line %d: Offset = %ld, Length = %d\n", i + 1, table[i].offset, table[i].length);
+    for (i = 0; i < num_lines; i++) {
+        printf("Line %d: Offset = %ld, Length = %d, Size = %d\n",
+               i + 1, table[i].offset, table[i].length, table[i].size);
+        total += table[i].size;
+    }
+    printf("Total size = %ld bytes", total);
+    if (fstat(fd, &st) == 0)
+        printf(" (file size = %ld bytes)", (long)st.st_size);
+    printf("\n");
 
     signal(SIGALRM, alarm_handler);
 
