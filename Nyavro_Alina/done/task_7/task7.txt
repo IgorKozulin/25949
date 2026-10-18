@@ -1,0 +1,152 @@
+7. Таблица поиска строк в текстовом файле 2.
+Измените предыдущую программу так, чтобы использовалось отображение файла в память взамен использования read(2), lseek(2) и write(2).
+
+________________________________________________________________
+
+# Таблица поиска строк (mmap)
+
+## 1. Подготовка рабочего места
+Переходим в директорию задания:
+
+cd ~/MyOSTest
+mkdir task_7
+cd task_7
+
+Создадим тестовый файл (если его нет):
+nano test.txt
+
+Вставь несколько строк:
+Hello World
+This is a test file
+For operating systems course
+Line number four
+End of file
+
+# Сохраняем: Ctrl+O, Enter, выход: Ctrl+X
+
+## 2. Ключевые концепции для понимания задачи
+
+• Memory-Mapped I/O (mmap): Механизм, позволяющий отобразить файл или устройство прямо в адресное пространство процесса. Файл становится доступен как обычный массив байтов в памяти.
+• Прямой доступ: После mmap отпадает необходимость в системных вызовах read(), lseek() и write() для доступа к данным. Поиск символов превращается в простой цикл по массиву.
+• Производительность: mmap избегает лишних копий данных из буфера ядра в буфер пользователя. Ядро само управляет подгрузкой страниц с диска по мере необходимости (demand paging).
+• Упрощение кода: Не нужно управлять позицией чтения или выделять буферы для ввода-вывода.
+
+## 3. Шпаргалка: Отображение файлов в память
+
+ФУНКЦИИ (sys/mman.h, sys/stat.h)
+• void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset): 
+  - addr: обычно NULL (ядро само выберет адрес).
+  - length: размер отображаемой области (размер файла).
+  - prot: PROT_READ (чтение), PROT_WRITE (запись).
+  - flags: MAP_PRIVATE (копия при записи, изменения не сохраняются в файл), MAP_SHARED.
+  - Возвращает указатель на начало памяти или MAP_FAILED (-1) при ошибке.
+• int munmap(void *addr, size_t length): Удаляет отображение. Обязательно вызывать перед завершением.
+• int fstat(int fd, struct stat *buf): Получает информацию о файле. Поле st_size содержит размер файла в байтах, который необходим для mmap.
+
+ОСОБЕННОСТИ MMAP
+• После успешного mmap дескриптор fd можно закрыть — отображение сохранится.
+• Для пустых файлов (size == 0) mmap может вернуть ошибку, нужна проверка.
+• Доступ к памяти вне диапазона [0, file_size) вызовет сигнал SIGSEGV (Segmentation Fault).
+
+## 4. Основные библиотеки
+
+#include <stdio.h>        // printf, scanf, fflush, fwrite
+#include <stdlib.h>       // malloc, realloc, free, exit
+#include <unistd.h>       // close, alarm, _exit, write
+#include <fcntl.h>        // open, O_RDONLY
+#include <signal.h>       // signal, SIGALRM
+#include <sys/mman.h>     // mmap, munmap, MAP_FAILED
+#include <sys/stat.h>     // fstat, struct stat
+#include <string.h>       // strlen
+
+## 5. Алгоритм решения
+
+1. Открытие и получение размера:
+   - Откройте файл через open().
+   - Используйте fstat() для получения размера файла (st.st_size).
+   - Если файл пустой, выведите сообщение и завершите работу.
+
+2. Отображение в память:
+   - Вызовите mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0).
+   - Проверьте результат на MAP_FAILED.
+   - Закройте файловый дескриптор (close(fd)), так как он больше не нужен.
+
+3. Построение таблицы строк:
+   - Пройдите по отображенной памяти (глобальный указатель char*) в цикле for от 0 до size.
+   - При встрече символа '\n' запишите в таблицу смещение начала строки и её длину.
+   - Не забудьте обработать последнюю строку, если она не заканчивается на '\n'.
+
+4. Обработчик сигнала (как в задании 6):
+   - Напишите функцию alarm_handler, которая выводит всё содержимое файла через write(STDOUT_FILENO, global_map, global_size) и завершает процесс через _exit().
+   - Зарегистрируйте обработчик через signal(SIGALRM, ...).
+
+5. Интерактивный цикл:
+   - Запрашивайте номер строки с таймером alarm(5).
+   - При успешном вводе сбрасывайте таймер alarm(0).
+   - Для вывода строки используйте fwrite(global_map + offset, 1, length, stdout). Это позволяет вывести точное количество байт без добавления '\0'.
+
+6. Очистка ресурсов:
+   - Освободите память таблицы (free).
+   - Удалите отображение (munmap).
+
+## 6. Сборка и тестирование
+
+Создайте Makefile для сборки line_lookup_mmap.c:
+
+CC = gcc
+CFLAGS = -O2
+TARGET = line_lookup_mmap
+SRC = line_lookup_mmap.c
+
+all: $(TARGET)
+
+$(TARGET): $(SRC)
+	$(CC) $(CFLAGS) -o $(TARGET) $(SRC)
+
+clean:
+	rm -f $(TARGET)
+
+.PHONY: all clean
+
+Команды для запуска:
+make clean
+make
+./line_lookup_mmap test.txt
+
+## 7. Пример проверки
+
+**Сценарий 1: Успешный ввод**
+i.kozulin@fit-main:~/MyOSTest/task_7$ ./line_lookup_mmap test.txt
+--- Debug: Line Table ---
+Line 1: Offset = 0, Length = 12
+Line 2: Offset = 12, Length = 20
+Line 3: Offset = 32, Length = 29
+Line 4: Offset = 61, Length = 17
+Line 5: Offset = 78, Length = 12
+-------------------------
+Enter line number (0 to quit, 5 sec timeout): 3
+For operating systems course
+Enter line number (0 to quit, 5 sec timeout): 0
+
+**Сценарий 2: Таймаут**
+i.kozulin@fit-main:~/MyOSTest/task_7$ ./line_lookup_mmap test.txt
+--- Debug: Line Table ---
+Line 1: Offset = 0, Length = 12
+Line 2: Offset = 12, Length = 20
+Line 3: Offset = 32, Length = 29
+Line 4: Offset = 61, Length = 17
+Line 5: Offset = 78, Length = 12
+-------------------------
+Enter line number (0 to quit, 5 sec timeout): 
+[TIMEOUT] Time is up! Printing full file content...
+Hello World
+This is a test file
+For operating systems course
+Line number four
+End of file
+
+**Сценарий 3: Пустой файл**
+touch empty.txt
+./line_lookup_mmap empty.txt
+Ожидаемый результат:
+File is empty.
