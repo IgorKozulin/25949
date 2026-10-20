@@ -7,6 +7,7 @@
 typedef struct {
     off_t offset;  // Смещение от начала файла (в байтах)
     int length;    // Длина строки (в байтах, включая '\n')
+    int total = offset + lenght;
 } LineInfo;
 
 int main(int argc, char *argv[]) {
@@ -120,7 +121,7 @@ int main(int argc, char *argv[]) {
         ssize_t bytes_read = read(fd, buffer, info.length);
         if (bytes_read > 0) {
             buffer[bytes_read] = '\0'; // Обязательно добавляем завершающий нуль для printf
-            printf("%s", buffer);
+            printf("%s, %d", buffer, &Lineinfo(total));
             // Если в конце файла не было '\n', добавим перенос
             if (buffer[bytes_read - 1] != '\n') {
                 printf("\n");
