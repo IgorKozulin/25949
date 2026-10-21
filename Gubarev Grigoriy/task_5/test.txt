@@ -1,0 +1,4 @@
+Hello Solaris
+This is a test file
+Line three has more text
+End
