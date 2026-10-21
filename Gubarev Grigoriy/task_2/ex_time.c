@@ -24,7 +24,7 @@ int main(void)
         perror("localtime");
         return EXIT_FAILURE;
     }
-    if (strftime(formatted, sizeof(formatted), "%m/%d/%Y %H:%M:%S %Z", california_time) == 0) {
+    if (strftime(formatted, sizeof(formatted), "%m/%d/%Y %H:%M %Z", california_time) == 0) {
         fprintf(stderr, "Could not format the time\n");
         return EXIT_FAILURE;
     }
