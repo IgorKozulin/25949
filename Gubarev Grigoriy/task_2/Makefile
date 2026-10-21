@@ -1,11 +1,12 @@
 CC = gcc
 CFLAGS = -std=c99 -Wall -Wextra -O2
 TARGET = ex_time
+SRC = ex_time.c
 
 all: $(TARGET)
 
-$(TARGET): ex_time.c
-	$(CC) $(CFLAGS) -o $@ $<
+$(TARGET): $(SRC)
+	$(CC) $(CFLAGS) -o $(TARGET) $(SRC)
 
 clean:
 	rm -f $(TARGET)

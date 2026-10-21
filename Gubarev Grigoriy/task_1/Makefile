@@ -1,11 +1,12 @@
 CC = gcc
 CFLAGS = -std=c99 -Wall -Wextra -O2
 TARGET = options
+SRC = optional.c
 
 all: $(TARGET)
 
-$(TARGET): optional.c
-	$(CC) $(CFLAGS) -o $@ $<
+$(TARGET): $(SRC)
+	$(CC) $(CFLAGS) -o $(TARGET) $(SRC)
 
 clean:
 	rm -f $(TARGET)
