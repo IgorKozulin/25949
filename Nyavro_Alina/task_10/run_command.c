@@ -7,13 +7,13 @@
 
 int main(int argc, char *argv[])
 {
-    /* 1. Проверка аргументов */
+    // 1. Проверка аргументов
     if (argc < 2) {
         fprintf(stderr, "Usage: %s <command> [args...]\n", argv[0]);
         exit(EXIT_FAILURE);
     }
 
-    /* 2. Создание подпроцесса */
+    // 2. Создание подпроцесса
     pid_t pid = fork();
     if (pid < 0) {
         perror("fork");
@@ -21,14 +21,15 @@ int main(int argc, char *argv[])
     }
 
     if (pid == 0) {
-        /* 3. Дочерний процесс: запускаем команду */
+        // 3. Дочерний процесс: запускаем команду
         execvp(argv[1], &argv[1]);
 
-        /* Сюда попадём только если команда не найдена */
+        //Сюда попадём только если команда не найдена
         perror("execvp");
         exit(127);
-    } else {
-        /* 4. Родительский процесс: ждём и печатаем код завершения */
+    } 
+    else {
+        // 4. Родительский процесс: ждём и печатаем код завершения
         printf("[PARENT] Starting command: %s\n", argv[1]);
         fflush(stdout);
 
@@ -41,7 +42,8 @@ int main(int argc, char *argv[])
         if (WIFEXITED(status)) {
             printf("[PARENT] Command exited normally with code: %d\n",
                    WEXITSTATUS(status));
-        } else if (WIFSIGNALED(status)) {
+        } 
+        else if (WIFSIGNALED(status)) {
             int sig = WTERMSIG(status);
             printf("[PARENT] Command terminated by signal: %d (%s)\n",
                    sig, strsignal(sig));

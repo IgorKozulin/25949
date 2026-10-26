@@ -115,4 +115,4 @@ Execvp failed: No such file or directory
 (Предварительно создайте программу, вызывающую segfault)
 ./run_command ./crash_program
 Ожидаемый результат:
-[PARENT Command terminated by signal: 11 (Segmentation fault)
+[PARENT] Command terminated by signal: 11 (Segmentation fault)
