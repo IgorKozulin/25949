@@ -26,7 +26,7 @@ int main(int argc, char *argv[])
 
         execlp("cat", "cat", argv[1], NULL);
 
-        // Сюда попадём только при ошибке execlp
+        //Сюда попадём только при ошибке execlp
         perror("execlp");
         exit(EXIT_FAILURE);
     } 
@@ -37,7 +37,7 @@ int main(int argc, char *argv[])
         printf("[PARENT] Printing some text while child is working...\n");
         fflush(stdout);
 
-        // Ожидание завершения ребенка 
+        //Ожидание завершения ребенка 
         printf("[PARENT] Waiting for child to finish...\n");
         fflush(stdout);
 
@@ -49,8 +49,9 @@ int main(int argc, char *argv[])
 
         if (WIFEXITED(status)) {
             printf("[PARENT] Child exited with status: %d\n",
-                   WEXITSTATUS(status));
-        } else {
+            WEXITSTATUS(status));
+        } 
+        else {
             printf("[PARENT] Child terminated abnormally\n");
         }
 
