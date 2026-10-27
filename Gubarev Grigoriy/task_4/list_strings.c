@@ -66,6 +66,8 @@ int main(void)
         }
         if (buffer[0] == '.')
             break;
+        if (length == 0)
+            continue;
         if (append(&head, &tail, buffer) == -1) {
             free_list(head);
             return EXIT_FAILURE;

@@ -7,7 +7,6 @@ int main(void)
 {
     time_t now;
     struct tm *california_time;
-    char formatted[64];
 
     if (setenv("TZ", "America/Los_Angeles", 1) == -1) {
         perror("setenv");
@@ -24,10 +23,9 @@ int main(void)
         perror("localtime");
         return EXIT_FAILURE;
     }
-    if (strftime(formatted, sizeof(formatted), "%m/%d/%Y %H:%M %Z", california_time) == 0) {
-        fprintf(stderr, "Could not format the time\n");
-        return EXIT_FAILURE;
-    }
-    puts(formatted);
+    printf("%02d/%02d/%04d %02d:%02d %s\n",
+           california_time->tm_mon + 1, california_time->tm_mday,
+           california_time->tm_year + 1900, california_time->tm_hour,
+           california_time->tm_min, tzname[california_time->tm_isdst > 0]);
     return EXIT_SUCCESS;
 }
