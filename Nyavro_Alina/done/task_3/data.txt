@@ -1,0 +1,17 @@
+--- before ---
+ Real UID = 5460, Effective UID = 5460
+--- before ---
+fopen(data.txt) FAILED: Permission denied
+--- after ---
+ Real UID = 5460, Effective UID = 5460
+--- after ---
+fopen(data.txt) FAILED: Permission denied
+
+--- before ---
+ Real UID = 5460, Effective UID = 5462
+--- before ---
+fopen(data.txt) SUCCESS
+--- after ---
+ Real UID = 5460, Effective UID = 5460
+--- after ---
+fopen(data.txt) FAILED: Permission denied
