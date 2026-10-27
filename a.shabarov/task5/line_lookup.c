@@ -120,7 +120,10 @@ int main(int argc, char *argv[]) {
         ssize_t bytes_read = read(fd, buffer, info.length);
         if (bytes_read > 0) {
             buffer[bytes_read] = '\0'; // Обязательно добавляем завершающий нуль для printf
-            printf("%s", buffer);
+            long bytes_before = (long)info.offset;
+            int line_bytes = info.length;
+            long total_sum = bytes_before + line_bytes;
+            printf("%s, %ld", buffer, total_sum);
             // Если в конце файла не было '\n', добавим перенос
             if (buffer[bytes_read - 1] != '\n') {
                 printf("\n");
