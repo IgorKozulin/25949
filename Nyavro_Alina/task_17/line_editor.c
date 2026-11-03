@@ -49,7 +49,7 @@ static void redraw(const char *buf, int len) {
         int word_len = i - word_start;
 
         if (col + word_len > 40 && col > 0) {
-            printf("\n\033[K");
+            printf("\n\r\033[K");
             col = 0;
         }
 
