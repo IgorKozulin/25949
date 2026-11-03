@@ -2,6 +2,23 @@
 #include <signal.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <termios.h>
+
+struct termios old_terminal;
+
+void disable_echoctl(void)
+{
+    struct termios terminal;
+    tcgetattr(STDIN_FILENO, &old_terminal);
+    terminal = old_terminal;
+    terminal.c_lflag &= ~ECHOCTL;
+    tcsetattr(STDIN_FILENO, TCSANOW, &terminal);
+}
+
+void restore_terminal(void)
+{
+    tcsetattr(STDIN_FILENO, TCSANOW, &old_terminal);
+}
 
 volatile sig_atomic_t beep_count = 0;
 
@@ -16,8 +33,8 @@ void sigquit_handler(int sig)
 {
     (void)sig;
     int count = beep_count;
-    const char *message = "Total signal count: ";
-    write(STDOUT_FILENO, message, 20);
+    const char *message = "Всего прозвучало сигналов: ";
+    write(STDOUT_FILENO, message, 28);
     if (count == 0)
     {
         write(STDOUT_FILENO, "0\n", 2);
@@ -38,7 +55,8 @@ void sigquit_handler(int sig)
         }
         write(STDOUT_FILENO, "\n", 1);
     }
-    write(STDOUT_FILENO, "Programm end by SIGQUIT\n", 25);
+    write(STDOUT_FILENO, "Программа завершена по SIGQUIT\n", 32);
+    restore_terminal();
     _exit(EXIT_SUCCESS);
 }
 
@@ -46,6 +64,8 @@ int main(void)
 {
     struct sigaction sa_int;
     struct sigaction sa_quit;
+
+    disable_echoctl();
 
     sa_int.sa_handler = sigint_handler;
     sigemptyset(&sa_int.sa_mask);
@@ -61,6 +81,7 @@ int main(void)
     sa_quit.sa_flags = 0;
     if (sigaction(SIGQUIT, &sa_quit, NULL) == -1)
     {
+        restore_terminal();
         perror("sigaction SIGQUIT");
         return EXIT_FAILURE;
     }
