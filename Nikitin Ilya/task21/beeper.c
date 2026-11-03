@@ -33,8 +33,8 @@ void sigquit_handler(int sig)
 {
     (void)sig;
     int count = beep_count;
-    const char *message = "Всего прозвучало сигналов: ";
-    write(STDOUT_FILENO, message, 28);
+    const char *message = "Total beep count: ";
+    write(STDOUT_FILENO, message, 17);
     if (count == 0)
     {
         write(STDOUT_FILENO, "0\n", 2);
@@ -55,7 +55,7 @@ void sigquit_handler(int sig)
         }
         write(STDOUT_FILENO, "\n", 1);
     }
-    write(STDOUT_FILENO, "Программа завершена по SIGQUIT\n", 32);
+    write(STDOUT_FILENO, "Programm end by SIGQUIT\n", 24);
     restore_terminal();
     _exit(EXIT_SUCCESS);
 }
@@ -86,10 +86,10 @@ int main(void)
         return EXIT_FAILURE;
     }
 
-    printf("Пищалка запущена!\n");
-    printf("Нажмите Ctrl+C — будет звуковой сигнал\n");
-    printf("Нажмите Ctrl+\\ — программа завершится с подсчетом сигналов\n");
-    printf("Ожидаю сигналов...\n");
+    printf("Beep is running!\n");
+    printf("Touch Ctrl+C — will be beep\n");
+    printf("Touch Ctrl+\\ — programm end with beep count\n");
+    printf("Waiting for signals...\n");
 
     while (1)
     {
