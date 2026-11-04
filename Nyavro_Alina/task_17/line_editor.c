@@ -45,19 +45,22 @@ static void redraw(const char *buf, int len) {
 
     while (i < len) {
         int word_start = i;
-        while (i < len && buf[i] != ' ') i++;
-        int word_len = i - word_start;
+        while (i < len && buf[i] != ' ') i++; //находим слово до пробела
+        int word_len = i - word_start; //длина слова
 
+        //если слово не помещается в 40 колонок — переносим целиком
         if (col + word_len > 40 && col > 0) {
-            printf("\n\r\033[K");
+            printf("\n\033[K");
             col = 0;
         }
 
+        //печатаем слово целиком (без разрыва)
         for (int j = word_start; j < i; j++) {
             putchar(buf[j]);
             col++;
         }
 
+        //печатаем пробелы после слова
         while (i < len && buf[i] == ' ') {
             putchar(' ');
             i++;
@@ -79,7 +82,7 @@ int main(void) {
 
     while (1) {
         char c;
-        ssize_t n = read(STDIN_FILENO, &c, 1);
+        ssize_t n = read(STDIN_FILENO, &c, 1); //читаем 1 байт
         if (n <= 0) break;
 
         //Ctrl+D (4) - выход, если строка пуста
@@ -91,7 +94,7 @@ int main(void) {
             continue;
         }
 
-        //Backspace (VERASE)
+        //Backspace (VERASE) - удалить последний символ
         if (c == orig_termios.c_cc[VERASE]) {
             if (pos > 0) {
                 pos--;
@@ -107,10 +110,10 @@ int main(void) {
             continue;
         }
 
-        //Ctrl+W (23) - удалить последнее слово
+        //Ctrl+W (23) - удалить последнее слово и пробелы перед ним
         if (c == 23) {
-            while (pos > 0 && buffer[pos-1] == ' ') pos--;
-            while (pos > 0 && buffer[pos-1] != ' ') pos--;
+            while (pos > 0 && buffer[pos-1] == ' ') pos--; //сначала пробелы
+            while (pos > 0 && buffer[pos-1] != ' ') pos--; //потом слово
             redraw(buffer, pos);
             continue;
         }
@@ -123,7 +126,7 @@ int main(void) {
             continue;
         }
 
-        //Печатаемый символ - добавить в буфер
+        //Печатаемый символ - добавить в буфер и перерисовать
         if (isprint((unsigned char)c)) {
             if (pos < (int)sizeof(buffer) - 1) {
                 buffer[pos++] = c;
@@ -132,7 +135,7 @@ int main(void) {
             continue;
         }
 
-        //Непечатаемый - сигнал
+        //Непечатаемый - звонок
         putchar('\a');
         fflush(stdout);
     }
