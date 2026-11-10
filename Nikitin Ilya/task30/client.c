@@ -89,6 +89,7 @@ int main(void)
             break;
         }
         printf("[CLIENT] Received: ");
+        fflush(stdout);
         write(STDOUT_FILENO, buffer, bytes_read);
     }
 
