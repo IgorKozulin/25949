@@ -67,24 +67,29 @@ int main(void)
                 close(sock_fd);
                 return EXIT_FAILURE;
             }
-
+            if (result == 0)
+                break;
             written += (size_t)result;
-
-            bytes_read = read(sock_fd, buffer, sizeof(buffer));
-            if (bytes_read == -1)
-            {
-                if (errno = EINTR)
-                    continue;
-                perror("read");
-                close(sock_fd);
-                return EXIT_FAILURE;
-            }
-            if (bytes_read > 0)
-            {
-                printf("[CLIENT] Received: ");
-                write(STDOUT_FILENO, buffer, bytes_read);
-            }
         }
+        if (written < len)
+            break;
+
+        bytes_read = read(sock_fd, buffer, sizeof(buffer));
+        if (bytes_read == -1)
+        {
+            if (errno == EINTR)
+                continue;
+            perror("read");
+            close(sock_fd);
+            return EXIT_FAILURE;
+        }
+        if (bytes_read == 0)
+        {
+            printf("[CLIENT] server disconnectedd\n");
+            break;
+        }
+        printf("[CLIENT] Received: ");
+        write(STDOUT_FILENO, buffer, bytes_read);
     }
 
     printf("[CLIENT] Close connection...\n");
