@@ -14,9 +14,9 @@
 static void mode_string(mode_t mode, char *str)
 {
     //Тип файла
-    if (S_ISDIR(mode))       str[0] = 'd';
+    if (S_ISDIR(mode)) str[0] = 'd';
     else if (S_ISREG(mode))  str[0] = '-';
-    else                    str[0] = '?';
+    else str[0] = '?';
 
     //Права владельца
     str[1] = (mode & S_IRUSR) ? 'r' : '-';
@@ -36,7 +36,7 @@ static void mode_string(mode_t mode, char *str)
     str[10] = '\0';
 }
 
-/* Форматирование даты модификации как в ls:
+/* Форматирование даты модификации:
     если файл старше 6 месяцев - "%b %e %Y"
     иначе - "%b %e %H:%M" 
 */
@@ -44,7 +44,7 @@ static void format_mtime(time_t mtime, char *buf, size_t bufsz)
 {
     struct tm *tm;
     time_t now = time(NULL);
-    const double SIX_MONTHS = 15552000.0;
+    const double SIX_MONTHS = 15552000.0; 
 
     tm = localtime(&mtime);
     if (tm == NULL) {
@@ -52,10 +52,10 @@ static void format_mtime(time_t mtime, char *buf, size_t bufsz)
         return;
     }
 
-    if (difftime(now, mtime) > SIX_MONTHS || difftime(mtime, now) > SIX_MONTHS) {
-        /* Старый файл или из будущего — показываем год */
+    if (difftime(now, mtime) > SIX_MONTHS) {
         strftime(buf, bufsz, "%b %e  %Y", tm);
-    } else {
+    } 
+    else {
         strftime(buf, bufsz, "%b %e %H:%M", tm);
     }
 }
@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
         int is_regular;
 
         if (lstat(argv[i], &st) == -1) {
-            fprintf(stderr, "%s: %s\n", argv[0], strerror(errno));
+            fprintf(stderr, "%s: %s: %s\n", argv[0], argv[i], strerror(errno));
             continue;
         }
 
@@ -98,13 +98,9 @@ int main(int argc, char *argv[])
         if (gr != NULL && gr->gr_name != NULL)
             group = gr->gr_name;
 
-        /* Дата модификации.
-        В Solaris st_mtime - макрос, разворачивающийся в st_mtim.tv_sec,
-        поэтому передаём его как time_t напрямую. 
-        */
+        //Дата модификации
         format_mtime(st.st_mtime, timebuf, sizeof(timebuf));
 
-        //basename() может модифицировать строку - работаем с копией
         name_copy = strdup(argv[i]);
         if (name_copy == NULL) {
             fprintf(stderr, "%s: out of memory\n", argv[0]);
