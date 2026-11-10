@@ -10,8 +10,9 @@
 
 int main(int argc, char *argv[])
 {
-    pid_t pid;
-    int status;
+    pid_t children[2];
+    int created = 0;
+    int i;
     int no_wait = 0;
     int result = EXIT_SUCCESS;
 
@@ -28,37 +29,44 @@ int main(int argc, char *argv[])
 
     printf("[PARENT] Starting. PID: %ld\n", (long)getpid());
 
-    /* Do not duplicate buffered output across fork(). */
     if (fflush(stdout) == EOF) {
         perror("fflush");
         return EXIT_FAILURE;
     }
 
-    pid = fork();
+    for (i = 0; i < 2; ++i) {
+        pid_t pid = fork();
 
-    if (pid == -1) {
-        perror("fork");
-        return EXIT_FAILURE;
-    }
-
-    if (pid == 0) {
-        printf("[CHILD] PID: %ld. Running cat.\n",
-               (long)getpid());
-
-        if (fflush(stdout) == EOF) {
-            perror("fflush");
-            _exit(EXIT_FAILURE);
+        if (pid == -1) {
+            perror("fork");
+            result = EXIT_FAILURE;
+            break;
         }
 
-        execlp("cat", "cat", argv[1], (char *)NULL);
+        if (pid == 0) {
+            printf("[CHILD %d] PID: %ld. Running cat.\n",
+                   i + 1, (long)getpid());
 
-        /* Executed only if execlp() failed. */
-        perror("execlp cat");
-        _exit(127);
+            if (fflush(stdout) == EOF) {
+                perror("fflush");
+                _exit(EXIT_FAILURE);
+            }
+
+            execlp("cat", "cat", argv[1], (char *)NULL);
+
+            perror("execlp cat");
+            _exit(127);
+        }
+
+        children[created++] = pid;
     }
 
-    printf("[PARENT] Child PID: %ld\n", (long)pid);
-    printf("[PARENT] Printing text while child can run.\n");
+    for (i = 0; i < created; ++i) {
+        printf("[PARENT] Child %d PID: %ld\n",
+               i + 1, (long)children[i]);
+    }
+
+    printf("[PARENT] Printing text while children can run.\n");
 
     if (fflush(stdout) == EOF) {
         perror("fflush");
@@ -70,32 +78,42 @@ int main(int argc, char *argv[])
         return result;
     }
 
-    while (waitpid(pid, &status, 0) == -1) {
-        if (errno == EINTR) {
+    for (i = 0; i < created; ++i) {
+        int status;
+        pid_t waited;
+
+        do {
+            waited = waitpid(children[i], &status, 0);
+        } while (waited == -1 && errno == EINTR);
+
+        if (waited == -1) {
+            perror("waitpid");
+            result = EXIT_FAILURE;
             continue;
         }
 
-        perror("waitpid");
-        return EXIT_FAILURE;
-    }
+        if (WIFEXITED(status)) {
+            int code = WEXITSTATUS(status);
 
-    if (WIFEXITED(status)) {
-        printf("[PARENT] Child exit code: %d\n",
-               WEXITSTATUS(status));
+            printf("[PARENT] Child %d exited with code: %d\n",
+                   i + 1, code);
 
-        if (WEXITSTATUS(status) != 0) {
+            if (code != 0) {
+                result = EXIT_FAILURE;
+            }
+        } else if (WIFSIGNALED(status)) {
+            printf("[PARENT] Child %d terminated by signal: %d\n",
+                   i + 1, WTERMSIG(status));
+            result = EXIT_FAILURE;
+        } else {
+            fprintf(stderr,
+                    "[PARENT] Unexpected status for child %d\n",
+                    i + 1);
             result = EXIT_FAILURE;
         }
-    } else if (WIFSIGNALED(status)) {
-        printf("[PARENT] Child terminated by signal: %d\n",
-               WTERMSIG(status));
-        result = EXIT_FAILURE;
-    } else {
-        fprintf(stderr, "[PARENT] Unexpected child status\n");
-        result = EXIT_FAILURE;
     }
 
-    printf("[PARENT] Child has finished. "
+    printf("[PARENT] Finished waiting for children. "
            "This is the last parent line.\n");
 
     return result;
