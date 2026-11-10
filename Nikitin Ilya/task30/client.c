@@ -12,6 +12,7 @@
 
 int main(void)
 {
+    ssize_t bytes_read;
     int sock_fd;
     struct sockaddr_un address;
     char buffer[BUFFER_SIZE];
@@ -68,6 +69,21 @@ int main(void)
             }
 
             written += (size_t)result;
+
+            bytes_read = read(sock_fd, buffer, sizeof(buffer));
+            if (bytes_read == -1)
+            {
+                if (errno = EINTR)
+                    continue;
+                perror("read");
+                close(sock_fd);
+                return EXIT_FAILURE;
+            }
+            if (bytes_read > 0)
+            {
+                printf("[CLIENT] Received: ");
+                write(STDOUT_FILENO, buffer, bytes_read);
+            }
         }
     }
 
@@ -76,4 +92,4 @@ int main(void)
     close(sock_fd);
 
     return EXIT_SUCCESS;
-}
+} // сервер должен отправлять текст назад и клиент его выводит в терминал
