@@ -79,11 +79,21 @@ int main(void)
             buffer[i] = (char)toupper((unsigned char)buffer[i]);
         }
 
-        if (write(STDOUT_FILENO, buffer, bytes_read) == -1)
+        size_t written = 0;
+        while (written < (size_t)bytes_read)
         {
-            perror("write");
-            break;
+            ssize_t res = write(client_fd, buffer + written, (size_t)bytes_read - written);
+            if (res == -1)
+            {
+                if (errno == EINTR)
+                    continue;
+                perror("write");
+                break;
+            }
+            written += (size_t)res;
         }
+        if(written<(size_t)bytes_read)
+            break;
     }
     printf("\nClient had disconected.\n");
     close(client_fd);
