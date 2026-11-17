@@ -7,6 +7,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <poll.h>
+#include <string.h>
 
 #define SOCKET_PATH "./socket"
 #define MAX_CLIENTS 32
@@ -230,7 +231,7 @@ int main(void)
             }
             else if (events & (POLLERR | POLLHUP | POLLNVAL))
             {
-                isconnect_client(fds, &nfds, i, &clients_count);
+                disconnect_client(fds, &nfds, i, &clients_count);
             }
         }
     }
