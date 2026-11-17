@@ -150,6 +150,10 @@ make clean
 make
 ./my_ls /etc/passwd /usr/bin/gcc /tmp /dev/null
 
+системная ls -ld . test_file.txt test_link /etc/passwd /dev/null
+моя ./my_ls . test_file.txt test_link /etc/passwd /dev/null
+
+
 ## 7. Пример проверки
 
 Ожидаемый вывод (примерный):

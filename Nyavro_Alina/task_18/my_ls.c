@@ -37,8 +37,8 @@ static void mode_string(mode_t mode, char *str)
 }
 
 /* Форматирование даты модификации:
-    если файл старше 6 месяцев - "%b %e %Y"
-    иначе - "%b %e %H:%M" 
+если файл старше 6 месяцев - "%b %e %Y"
+иначе - "%b %e %H:%M" 
 */
 static void format_mtime(time_t mtime, char *buf, size_t bufsz)
 {
