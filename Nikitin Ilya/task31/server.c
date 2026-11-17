@@ -25,7 +25,7 @@ static void handle_sigint(int signal_number)
 static void disconnect_client(struct pollfd fds[], nfds_t *nfds, nfds_t index, int *clients_count)
 {
     int client_fd = fds[index].fd;
-    if (client_fd = -1)
+    if (client_fd == -1)
     {
         return;
     }
@@ -86,7 +86,7 @@ int main(void)
         return EXIT_FAILURE;
     }
 
-    memset(&server_fd, 0, sizeof(server_fd));
+    memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sun_family = AF_UNIX;
 
     if (strlen(SOCKET_PATH) >= sizeof(server_addr.sun_path))
@@ -194,7 +194,7 @@ int main(void)
                         }
                     }
                 }
-                if (events & (POLLERR | POLLHUP || POLLNVAL))
+                if (events & (POLLERR | POLLHUP | POLLNVAL))
                 {
                     fprintf(stderr, "[SERVER] server socket error\n");
                     exit_code = EXIT_FAILURE;
