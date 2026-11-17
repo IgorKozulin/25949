@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <signal.h>
 #include <sys/wait.h>
+#include <sys/select.h>
 
 #define BUFFER_SIZE 1024
 
@@ -104,6 +105,30 @@ int main(void)
         printf("> ");
         fflush(stdout);
 
+        struct timeval timeout;
+        timeout.tv_sec = 5;
+        timeout.tv_usec = 0;
+
+        fd_set readfds;
+        FD_ZERO(&readfds);
+        FD_SET(STDIN_FILENO, &readfds);
+
+       int ready = select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout);
+
+        if (ready < 0) {
+            if (errno == EINTR)
+                continue;
+            perror("select");
+            break;
+        }
+
+        if (ready == 0) {
+            // Прошло 5 секунд, а пользователь так ничего и не ввёл
+            printf("\n[PARENT] Время ожидания (5 сек) истекло — завершаю ввод.\n");
+            break;
+        }
+
+        //Если ready > 0, значит данные появились - читаем их безопасно
         if (fgets(input, sizeof(input), stdin) == NULL) {
             if (ferror(stdin)) {
                 perror("fgets");
@@ -113,7 +138,7 @@ int main(void)
             break;
         }
 
-        //Выход по пустой строке
+        //Выход по пустой строке (нажат только Enter)
         if (input[0] == '\n') {
             printf("[PARENT] Пустая строка — завершаю ввод.\n");
             break;
