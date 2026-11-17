@@ -7,6 +7,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <signal.h>
+#include <time.h>
 #include <sys/wait.h>
 #include <sys/select.h>
 
@@ -37,16 +38,18 @@ int main(void)
 {
     int pipefd[2];
     pid_t pid;
+    char input[BUFFER_SIZE];
+    struct timespec ts;
 
     signal(SIGPIPE, SIG_IGN);
 
-    //1. Создаём программный канал
+    /* 1. Создаём программный канал */
     if (pipe(pipefd) < 0) {
         perror("pipe");
         exit(EXIT_FAILURE);
     }
 
-    //2. Создаём дочерний процесс
+    /* 2. Создаём дочерний процесс */
     pid = fork();
     if (pid < 0) {
         perror("fork");
@@ -56,14 +59,15 @@ int main(void)
     }
 
     if (pid == 0) {
-        //3. Дочерний процесс: читает из канала и переводит в верхний регистр
+        /* 3. Дочерний процесс: читает из канала и переводит в верхний регистр */
+        char buffer[BUFFER_SIZE];
+        ssize_t bytes_read;
+        ssize_t i;
+
         close(pipefd[1]);
 
         printf("[CHILD] Запущен. Ожидаю данные от родителя...\n");
         fflush(stdout);
-
-        char buffer[BUFFER_SIZE];
-        ssize_t bytes_read;
 
         while (1) {
             bytes_read = read(pipefd[0], buffer, sizeof(buffer) - 1);
@@ -80,7 +84,7 @@ int main(void)
 
             buffer[bytes_read] = '\0';
 
-            for (ssize_t i = 0; i < bytes_read; i++) {
+            for (i = 0; i < bytes_read; i++) {
                 buffer[i] = (char)toupper((unsigned char)buffer[i]);
             }
 
@@ -92,28 +96,31 @@ int main(void)
         exit(EXIT_SUCCESS);
     }
 
-    // 4. Родительский процесс: читает ввод с клавиатуры и пишет в канал 
+    /* 4. Родительский процесс: читает ввод с клавиатуры и пишет в канал */
     close(pipefd[0]);
 
     printf("[PARENT] Связь через канал установлена!\n");
     printf("[PARENT] Введите текст (пустая строка или Ctrl+D — выход):\n\n");
     fflush(stdout);
 
-    char input[BUFFER_SIZE];
+    ts.tv_sec = 0;
+    ts.tv_nsec = 10000000L; /* 10 мс */
 
     while (1) {
+        struct timeval timeout;
+        fd_set readfds;
+        int ready;
+
         printf("> ");
         fflush(stdout);
 
-        struct timeval timeout;
         timeout.tv_sec = 5;
         timeout.tv_usec = 0;
 
-        fd_set readfds;
         FD_ZERO(&readfds);
         FD_SET(STDIN_FILENO, &readfds);
 
-       int ready = select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout);
+        ready = select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout);
 
         if (ready < 0) {
             if (errno == EINTR)
@@ -123,12 +130,12 @@ int main(void)
         }
 
         if (ready == 0) {
-            // Прошло 5 секунд, а пользователь так ничего и не ввёл
+            /* Прошло 5 секунд, а пользователь так ничего и не ввёл */
             printf("\n[PARENT] Время ожидания (5 сек) истекло — завершаю ввод.\n");
             break;
         }
 
-        //Если ready > 0, значит данные появились - читаем их безопасно
+        /* Если ready > 0, значит данные появились - читаем их безопасно */
         if (fgets(input, sizeof(input), stdin) == NULL) {
             if (ferror(stdin)) {
                 perror("fgets");
@@ -138,7 +145,7 @@ int main(void)
             break;
         }
 
-        //Выход по пустой строке (нажат только Enter)
+        /* Выход по пустой строке (нажат только Enter) */
         if (input[0] == '\n') {
             printf("[PARENT] Пустая строка — завершаю ввод.\n");
             break;
@@ -149,7 +156,7 @@ int main(void)
             break;
         }
 
-        usleep(10000);
+        nanosleep(&ts, NULL);
     }
 
     close(pipefd[1]);
