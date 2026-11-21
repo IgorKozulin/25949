@@ -1,0 +1,220 @@
+shell.h:
+
+  1
+  2 #define MAXARGS 256
+  3 #define MAXCMDS 50
+  4
+  5 struct command {
+  6     char *cmdargs[MAXARGS];
+  7         char cmdflag;
+  8 };
+  9
+ 10 /*  cmdflag's  */
+ 11 #define OUTPIP  01
+ 12 #define INPIP   02
+ 13
+ 14 extern struct command cmds[];
+ 15 extern char *infile, *outfile, *appfile;
+ 16 extern char bkgrnd;
+ 17
+ 18 int parseline(char *);
+ 19 int promptline(char *, char *, int);
+
+shell.c:
+
+  1 #include <sys/types.h>
+  2 #include <stdio.h>
+  3 #include <unistd.h>
+  4 #include <wait.h>
+  5 #include "shell.h"
+  6
+  7 char *infile, *outfile, *appfile;
+  8 struct command cmds[MAXCMDS];
+  9 char bkgrnd;
+ 10
+ 11 main(int argc, char *argv[])
+ 12 {
+ 13     register int i;
+ 14         char line[1024];      /*  allow large command lines  */
+ 15     int ncmds;
+ 16         char prompt[50];      /* shell prompt */
+ 17
+ 18     /* PLACE SIGNAL CODE HERE */
+ 19
+ 20     sprintf(prompt,"[%s] ", argv[0]);
+ 21
+ 22     while (promptline(prompt, line, sizeof(line)) > 0) {    /*
+until eof  */
+ 23                 if ((ncmds = parseline(line)) <= 0)
+ 24             continue;   /* read next line */
+ 25 #ifdef DEBUG
+ 26 {
+ 27     int i, j;
+ 28         for (i = 0; i < ncmds; i++) {
+ 29         for (j = 0; cmds[i].cmdargs[j] != (char *) NULL; j++)
+ 30             fprintf(stderr, "cmd[%d].cmdargs[%d] = %s\n",
+ 31              i, j, cmds[i].cmdargs[j]);
+ 32         fprintf(stderr, "cmds[%d].cmdflag = %o\n", i,
+cmds[i].cmdflag);
+ 33     }
+ 34 }
+ 35 #endif
+ 36
+ 37         for (i = 0; i < ncmds; i++) {
+ 38
+ 39             /*  FORK AND EXECUTE  */
+ 40
+ 41         }
+ 42
+ 43     }  /* close while */
+ 44 }
+ 45
+ 46 /* PLACE SIGNAL CODE HERE */
+parseline.c:
+
+  1 #include <stdio.h>
+  2 #include <ctype.h>
+  3 #include <string.h>
+  4 #include "shell.h"
+  5 static char *blankskip(register char *);
+  6
+  7 int parseline(char *line)
+  8 {
+  9     int nargs, ncmds;
+ 10         register char *s;
+ 11     char aflg = 0;
+ 12         int rval;
+ 13     register int i;
+ 14         static char delim[] = " \t|&<>;\n";
+ 15
+ 16     /* initialize  */
+ 17         bkgrnd = nargs = ncmds = rval = 0;
+ 18     s = line;
+ 19         infile = outfile = appfile = (char *) NULL;
+ 20     cmds[0].cmdargs[0] = (char *) NULL;
+ 21         for (i = 0; i < MAXCMDS; i++)
+ 22         cmds[i].cmdflag = 0;
+ 23
+ 24     while (*s) {        /* until line has been parsed */
+ 25                 s = blankskip(s);       /*  skip white space */
+ 26         if (!*s) break; /*  done with line */
+ 27
+ 28         /*  handle <, >, |, &, and ;  */
+ 29         switch(*s) {
+ 30             case '&':
+ 31                 ++bkgrnd;
+ 32                 *s++ = '\0';
+ 33                 break;
+ 34             case '>':
+ 35                 if (*(s+1) == '>') {
+ 36                     ++aflg;
+ 37                     *s++ = '\0';
+ 38                 }
+ 39                 *s++ = '\0';
+ 40                 s = blankskip(s);
+ 41                 if (!*s) {
+ 42                     fprintf(stderr, "syntax error\n");
+ 43                     return(-1);
+ 44                 }
+ 45
+ 46                 if (aflg)
+ 47                     appfile = s;
+ 48                 else
+ 49                     outfile = s;
+ 50                 s = strpbrk(s, delim);
+ 51                 if (isspace(*s))
+ 52                     *s++ = '\0';
+ 53                 break;
+ 54             case '<':
+ 55                 *s++ = '\0';
+ 56                 s = blankskip(s);
+ 57                 if (!*s) {
+ 58                     fprintf(stderr, "syntax error\n");
+ 59                     return(-1);
+ 60                 }
+ 61                 infile = s;
+ 62                 s = strpbrk(s, delim);
+ 63                 if (isspace(*s))
+ 64                     *s++ = '\0';
+ 65                 break;
+ 66             case '|':
+ 67                 if (nargs == 0) {
+ 68                     fprintf(stderr, "syntax error\n");
+ 69                     return(-1);
+ 70                 }
+ 71                 cmds[ncmds++].cmdflag |= OUTPIP;
+ 72                 cmds[ncmds].cmdflag |= INPIP;
+ 73                 *s++ = '\0';
+ 74                 nargs = 0;
+ 75                 break;
+ 76             case ';':
+ 77                 *s++ = '\0';
+ 78                 ++ncmds;
+ 79                 nargs = 0;
+ 80                 break;
+ 81             default:
+ 82                 /*  a command argument  */
+ 83                 if (nargs == 0) /* next command */
+ 84                     rval = ncmds+1;
+ 85                 cmds[ncmds].cmdargs[nargs++] = s;
+ 86                 cmds[ncmds].cmdargs[nargs] = (char *) NULL;
+ 87                 s = strpbrk(s, delim);
+ 88                 if (isspace(*s))
+ 89                     *s++ = '\0';
+ 90                 break;
+ 91         }  /*  close switch  */
+ 92     }  /* close while  */
+ 93
+ 94     /*  error check  */
+ 95
+ 96     /*
+ 97          *  The only errors that will be checked for are
+ 98      *  no command on the right side of a pipe
+ 99          *  no command to the left of a pipe is checked above
+100      */
+101         if (cmds[ncmds-1].cmdflag & OUTPIP) {
+102         if (nargs == 0) {
+103             fprintf(stderr, "syntax error\n");
+104             return(-1);
+105         }
+106     }
+107
+108     return(rval);
+109 }
+110
+111 static char *
+112 blankskip(register char *s)
+113 {
+114     while (isspace(*s) && *s) ++s;
+115         return(s);
+116 }
+promptline.c:
+
+  1
+  2 #include <stdio.h>
+  3 #include <unistd.h>
+  4 #include <string.h>
+  5 #include "shell.h"
+  6
+  7 int promptline(char *prompt, char *line, int sizline)
+  8 {
+  9     int n = 0;
+ 10
+ 11     write(1, prompt, strlen(prompt));
+ 12         while (1) {
+ 13         n += read(0, (line + n), sizline-n);
+ 14         *(line+n) = '\0';
+ 15         /*
+ 16          *  check to see if command line extends onto
+ 17          *  next line.  If so, append next line to command line
+ 18          */
+ 19
+ 20         if (*(line+n-2) == '\\' && *(line+n-1) == '\n') {
+ 21             *(line+n) = ' ';
+ 22             *(line+n-1) = ' ';
+ 23             *(line+n-2) = ' ';
+ 24             continue;   /*  read next line  */
+ 25         }
+ 26         return(n);      /* all done */
+ 27     }
+ 28 }
