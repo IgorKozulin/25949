@@ -36,7 +36,7 @@ static void make_mode_string(mode_t mode, char text[11])
 }
 
 static const char *format_mtime(time_t mtime, time_t now,
-                                char *date, size_t capacity)
+                               char *date, size_t capacity)
 {
     struct tm *local = localtime(&mtime);
     double age = difftime(now, mtime);
@@ -73,14 +73,13 @@ static int print_entry(char *path, time_t now)
 
     make_mode_string(info.st_mode, mode);
 
-    if (S_ISREG(info.st_mode)) {
+    if (S_ISREG(info.st_mode) || S_ISDIR(info.st_mode)) {
         snprintf(size, sizeof(size), "%jd", (intmax_t)info.st_size);
     }
 
     date_text = format_mtime(info.st_mtime, now, date, sizeof(date));
     owner = getpwuid(info.st_uid);
     group = getgrgid(info.st_gid);
-
     name = basename(path);
 
     if (printf("%-10s %5ju %-12s %-12s %12s %-12s %s\n",

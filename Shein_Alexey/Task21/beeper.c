@@ -10,6 +10,52 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <termios.h>
+#include <unistd.h>
+
+static struct termios saved_terminal;
+
+static void restore_terminal(void)
+{
+    int result;
+
+    do {
+        result = tcsetattr(STDIN_FILENO, TCSANOW, &saved_terminal);
+    } while (result == -1 && errno == EINTR);
+
+    if (result == -1) {
+        perror("restore terminal");
+    }
+}
+
+static int disable_echo(void)
+{
+    struct termios mode;
+
+    if (!isatty(STDIN_FILENO)) {
+        return 0;
+    }
+
+    if (tcgetattr(STDIN_FILENO, &saved_terminal) == -1) {
+        perror("tcgetattr");
+        return -1;
+    }
+
+    if (atexit(restore_terminal) != 0) {
+        fprintf(stderr, "Cannot register terminal cleanup\n");
+        return -1;
+    }
+
+    mode = saved_terminal;
+    mode.c_lflag &= ~(ECHO | ECHONL);
+
+    if (tcsetattr(STDIN_FILENO, TCSANOW, &mode) == -1) {
+        perror("tcsetattr");
+        return -1;
+    }
+
+    return 0;
+}
 
 int main(void)
 {
@@ -28,6 +74,10 @@ int main(void)
         return EXIT_FAILURE;
     }
 
+    if (disable_echo() == -1) {
+        return EXIT_FAILURE;
+    }
+
     if (puts("Press Ctrl+C to beep, Ctrl+\\ to quit (default keys).") == EOF ||
         fflush(stdout) == EOF) {
         perror("stdout");
@@ -41,6 +91,7 @@ int main(void)
         if (error == EINTR) {
             continue;
         }
+
         if (error != 0) {
             fprintf(stderr, "sigwait: %s\n", strerror(error));
             return EXIT_FAILURE;
