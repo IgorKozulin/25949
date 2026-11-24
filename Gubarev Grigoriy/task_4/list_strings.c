@@ -9,7 +9,11 @@ typedef struct Node {
     struct Node *next;
 } Node;
 
-static int append(Node **head, Node **tail, const char *text)
+/*
+ * Each new line goes to the front of the list, so the list ends up in
+ * reverse input order and a plain walk from head prints it backwards.
+ */
+static int push_front(Node **head, const char *text)
 {
     Node *node = malloc(sizeof(*node));
     size_t length = strlen(text);
@@ -25,12 +29,8 @@ static int append(Node **head, Node **tail, const char *text)
         return -1;
     }
     memcpy(node->text, text, length + 1);
-    node->next = NULL;
-    if (*tail == NULL)
-        *head = node;
-    else
-        (*tail)->next = node;
-    *tail = node;
+    node->next = *head;
+    *head = node;
     return 0;
 }
 
@@ -47,12 +47,10 @@ static void free_list(Node *head)
 int main(void)
 {
     Node *head = NULL;
-    Node *tail = NULL;
     char buffer[BUFFER_SIZE];
-    int done = 0;
 
     puts("Enter lines; a line starting with '.' ends input:");
-    while (!done && fgets(buffer, sizeof(buffer), stdin) != NULL) {
+    while (fgets(buffer, sizeof(buffer), stdin) != NULL) {
         size_t length = strlen(buffer);
         int has_newline = length > 0 && buffer[length - 1] == '\n';
 
@@ -66,9 +64,8 @@ int main(void)
         }
         if (buffer[0] == '.')
             break;
-        if (length == 0)
-            continue;
-        if (append(&head, &tail, buffer) == -1) {
+        /* Empty lines are stored too: length 0 still gets a 1-byte "\0" string. */
+        if (push_front(&head, buffer) == -1) {
             free_list(head);
             return EXIT_FAILURE;
         }
@@ -79,7 +76,7 @@ int main(void)
         return EXIT_FAILURE;
     }
 
-    puts("Stored lines:");
+    puts("Stored lines (reverse order):");
     for (Node *node = head; node != NULL; node = node->next)
         puts(node->text);
     free_list(head);

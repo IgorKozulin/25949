@@ -6,6 +6,7 @@
 #include <string.h>
 #include <sys/resource.h>
 #include <sys/types.h>
+#include <time.h>
 #include <unistd.h>
 
 extern char **environ;
@@ -85,6 +86,49 @@ static int set_limit(int resource, const char *text, const char *label)
     return 0;
 }
 
+/*
+ * -t: local time in Novosibirsk. localtime() follows the TZ environment
+ * variable, so TZ is switched for the call and then restored, otherwise
+ * a later -v would show TZ that the user never set.
+ */
+static int print_novosibirsk_time(void)
+{
+    const char *saved = getenv("TZ");
+    char *old_tz = NULL;
+    time_t now;
+    struct tm *local;
+    int result = 0;
+
+    if (saved != NULL && (old_tz = strdup(saved)) == NULL) {
+        perror("strdup");
+        return -1;
+    }
+    if (setenv("TZ", "Asia/Novosibirsk", 1) == -1) {
+        perror("setenv");
+        free(old_tz);
+        return -1;
+    }
+    tzset();
+    now = time(NULL);
+    local = now == (time_t)-1 ? NULL : localtime(&now);
+    if (local == NULL) {
+        perror("time");
+        result = -1;
+    } else {
+        printf("Novosibirsk time: %02d/%02d/%04d %02d:%02d %s\n",
+               local->tm_mon + 1, local->tm_mday, local->tm_year + 1900,
+               local->tm_hour, local->tm_min, tzname[local->tm_isdst > 0]);
+    }
+
+    if (old_tz != NULL)
+        setenv("TZ", old_tz, 1);
+    else
+        unsetenv("TZ");
+    tzset();
+    free(old_tz);
+    return result;
+}
+
 static int apply_option(const ParsedOption *item)
 {
     char cwd[PATH_MAX];
@@ -101,6 +145,7 @@ static int apply_option(const ParsedOption *item)
     case 'U': if (set_limit(RLIMIT_NOFILE, item->argument, "Open-file limit") == -1) return -1; break;
     case 'c': print_limit(RLIMIT_CORE, "Core-file size limit", 1); break;
     case 'C': if (set_limit(RLIMIT_CORE, item->argument, "Core-file size limit") == -1) return -1; break;
+    case 't': if (print_novosibirsk_time() == -1) return -1; break;
     case 'd':
         if (getcwd(cwd, sizeof(cwd)) == NULL) { perror("getcwd"); return -1; }
         printf("Current directory: %s\n", cwd);
@@ -152,7 +197,7 @@ int main(int argc, char **argv)
     }
 
     opterr = 0;
-    while ((option = getopt(argc, argv, "ispuU:cC:dvV:")) != -1) {
+    while ((option = getopt(argc, argv, "ispuU:cC:dvV:t")) != -1) {
         ParsedOption *grown;
         if (option == '?') {
             fprintf(stderr, "Unknown option or missing argument: -%c\n", optopt);

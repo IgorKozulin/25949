@@ -97,6 +97,7 @@ static int read_exact(int fd, char *buffer, size_t length)
 int main(int argc, char **argv)
 {
     int fd;
+    off_t file_size;
     LineInfo *table = NULL;
     size_t line_count = 0;
     char input[128];
@@ -116,10 +117,20 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    puts("--- Line table (line: offset, length) ---");
+    /* Offsets stay in the table (lseek needs them) but are no longer printed. */
+    puts("--- Line table (line: length) ---");
     for (size_t i = 0; i < line_count; ++i)
-        printf("%zu: %lld, %lld\n", i + 1, (long long)table[i].offset,
-               (long long)table[i].length);
+        printf("%zu: %lld\n", i + 1, (long long)table[i].length);
+
+    /* The end-of-file position equals the file size in bytes. */
+    file_size = lseek(fd, 0, SEEK_END);
+    if (file_size == (off_t)-1) {
+        perror("lseek");
+        free(table);
+        close(fd);
+        return EXIT_FAILURE;
+    }
+    printf("File size: %lld bytes\n", (long long)file_size);
 
     for (;;) {
         char *end;

@@ -1,4 +1,5 @@
-Hello Solaris
+Hello World
 This is a test file
-Line three has more text
-End
+For operating systems course
+Line number four
+End of file
