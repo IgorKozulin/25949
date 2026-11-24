@@ -9,9 +9,9 @@
 
 /*
  * The child runs cat(1) on a file, the parent prints its own text.
- * Without -n the parent waits for the child with waitpid(), so its last
- * line always comes after the end of cat. With -n it does not wait: this
- * is the first part of the task, kept to show why the wait is needed.
+ * Without -n the parent waits for the child with waitpid() first, so all
+ * parent output appears strictly after the child finishes. With -n it does
+ * not wait: kept to demonstrate the first part of the task.
  */
 int main(int argc, char **argv)
 {
@@ -30,10 +30,7 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    printf("[PARENT] Starting program. My PID: %ld\n", (long)getpid());
-    /* Flush before fork(): otherwise the unsent text would be copied into the child. */
     fflush(stdout);
-
     pid = fork();
     if (pid < 0) {
         perror("fork");
@@ -41,36 +38,29 @@ int main(int argc, char **argv)
     }
 
     if (pid == 0) {
-        printf("[CHILD] I am the child process. My PID: %ld\n", (long)getpid());
-        /* exec throws away the stdio buffer, so flush before it. */
-        fflush(stdout);
         execlp("cat", "cat", file, (char *)NULL);
-        /* Reached only if exec failed. _exit() does not flush the copied stdio buffer. */
+        /* Reached only if exec failed. _exit() does not flush the parent's stdio buffer. */
         perror("execlp cat");
         _exit(127);
     }
 
-    printf("[PARENT] I am the parent. Child PID: %ld\n", (long)pid);
-    printf("[PARENT] Printing some text while child is working...\n");
-    fflush(stdout);
-
     if (!wait_for_child) {
-        printf("[PARENT] Last line printed by parent (did not wait for child).\n");
+        printf("[PARENT] Child PID: %ld (NOT waiting for child)\n", (long)pid);
+        printf("[PARENT] Last line printed by parent before child finished.\n");
         return EXIT_SUCCESS;
     }
 
-    printf("[PARENT] Waiting for child to finish...\n");
-    fflush(stdout);
     while (waitpid(pid, &status, 0) == -1) {
         if (errno != EINTR) {
             perror("waitpid");
             return EXIT_FAILURE;
         }
     }
+
     if (WIFEXITED(status))
-        printf("[PARENT] Child exited with status: %d\n", WEXITSTATUS(status));
+        printf("[PARENT] Child (PID %ld) exited with status: %d\n", (long)pid, WEXITSTATUS(status));
     else if (WIFSIGNALED(status))
-        printf("[PARENT] Child terminated by signal: %d\n", WTERMSIG(status));
-    printf("[PARENT] Child has finished. This is the last line printed by parent.\n");
+        printf("[PARENT] Child (PID %ld) terminated by signal: %d\n", (long)pid, WTERMSIG(status));
+    printf("[PARENT] Child has finished. This text is printed by parent AFTER child.\n");
     return EXIT_SUCCESS;
 }
